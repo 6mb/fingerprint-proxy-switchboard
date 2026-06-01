@@ -73,7 +73,7 @@ class PanelSettingsRequest(BaseModel):
 
 DELAY_CACHE: dict[str, dict[str, Any]] = {}
 SLOT_EGRESS_CACHE: dict[int, dict[str, Any]] = {}
-EGRESS_PROBE_URL = "http://ip-api.com/json/?fields=status,country,countryCode,query"
+EGRESS_PROBE_URL = "https://my.ippure.com/v1/info"
 
 
 def settings() -> Settings:
@@ -275,6 +275,13 @@ def _egress_cache(slot_id: int) -> dict[str, Any]:
         "ok": False,
         "ip": "",
         "country": {"code": "", "name": ""},
+        "city": "",
+        "region": "",
+        "asn": None,
+        "asOrganization": "",
+        "fraudScore": None,
+        "isResidential": None,
+        "isBroadcast": None,
         "updatedAt": None,
         "error": "",
     }
@@ -372,8 +379,6 @@ async def probe_slot_egress(cfg: Settings, slot_id: int, port: int) -> dict[str,
             response = await client.get(EGRESS_PROBE_URL)
         response.raise_for_status()
         payload = response.json()
-        if payload.get("status") != "success":
-            raise ValueError(str(payload.get("message") or "egress probe failed"))
         state = {
             "ok": True,
             "ip": str(payload.get("query") or ""),
@@ -381,6 +386,13 @@ async def probe_slot_egress(cfg: Settings, slot_id: int, port: int) -> dict[str,
                 "code": str(payload.get("countryCode") or ""),
                 "name": str(payload.get("country") or ""),
             },
+            "city": str(payload.get("city") or ""),
+            "region": str(payload.get("region") or ""),
+            "asn": payload.get("asn"),
+            "asOrganization": str(payload.get("asOrganization") or ""),
+            "fraudScore": payload.get("fraudScore"),
+            "isResidential": payload.get("isResidential"),
+            "isBroadcast": payload.get("isBroadcast"),
             "updatedAt": _utc_now(),
             "error": "",
         }
@@ -389,6 +401,13 @@ async def probe_slot_egress(cfg: Settings, slot_id: int, port: int) -> dict[str,
             "ok": False,
             "ip": "",
             "country": {"code": "", "name": ""},
+            "city": "",
+            "region": "",
+            "asn": None,
+            "asOrganization": "",
+            "fraudScore": None,
+            "isResidential": None,
+            "isBroadcast": None,
             "updatedAt": _utc_now(),
             "error": str(exc)[:180],
         }

@@ -1,15 +1,18 @@
-import { KeyRound, Layers3, Network, ShieldCheck, TimerReset } from "lucide-react";
+import { KeyRound, Layers3, Network, Radar, ShieldCheck, TimerReset } from "lucide-react";
+import { toast } from "sonner";
 import { PageHeader } from "@/components/ui/page-header";
 import { QueryState } from "@/components/ui/query-state";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { SourceErrors } from "@/components/dashboard/source-errors";
 import { StatCard } from "@/components/dashboard/stat-card";
-import { useStatusQuery } from "@/hooks/use-panel-data";
-import { displayName, protocolSummary, shortCountryLabel, statusLabel, statusTone } from "@/lib/panel";
+import { useProbeSlotMutation, useStatusQuery } from "@/hooks/use-panel-data";
+import { displayName, egressPurityLabel, egressPurityTone, protocolSummary, shortCountryLabel, statusLabel, statusTone } from "@/lib/panel";
 
 export default function DashboardPage() {
   const statusQuery = useStatusQuery();
+  const probeMutation = useProbeSlotMutation();
 
   if (statusQuery.isLoading) {
     return <QueryState title="正在加载概览" description="正在读取 Mihomo 与节点状态。" loading />;
@@ -81,9 +84,33 @@ export default function DashboardPage() {
                     <div className="font-medium">端口 {slot.port}</div>
                     <div className="text-xs text-muted-foreground">{slot.name}</div>
                   </div>
-                  <Badge variant={statusTone(slot.selectedNode)}>
-                    {statusLabel(slot.selectedNode)}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={statusTone(slot.selectedNode)}>
+                      {statusLabel(slot.selectedNode)}
+                    </Badge>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={probeMutation.isPending && probeMutation.variables?.slotId === slot.id}
+                      onClick={async () => {
+                        try {
+                          const result = await probeMutation.mutateAsync({ slotId: slot.id });
+                          if (result.ok) {
+                            toast.success(
+                              `端口 ${slot.port} 出口 ${result.country?.code || "-"} ${result.ip || ""}`.trim(),
+                            );
+                          } else {
+                            toast.error(result.error || "出口检测失败");
+                          }
+                        } catch (error) {
+                          toast.error(error instanceof Error ? error.message : "出口检测失败");
+                        }
+                      }}
+                    >
+                      <Radar className={probeMutation.isPending && probeMutation.variables?.slotId === slot.id ? "animate-pulse" : ""} />
+                      检测
+                    </Button>
+                  </div>
                 </div>
                 <div className="mt-3 space-y-1">
                   <div className="truncate text-sm font-medium" title={slot.selectedNode?.name || slot.selected}>
@@ -99,6 +126,16 @@ export default function DashboardPage() {
                       ? `出口 ${shortCountryLabel(slot.egress.country)} · ${slot.egress.ip}`
                       : "出口待检测"}
                   </div>
+                  {slot.egress.ok ? (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <Badge variant={egressPurityTone(slot.egress)}>
+                        纯净度 {egressPurityLabel(slot.egress)}
+                      </Badge>
+                      {typeof slot.egress.fraudScore === "number" ? (
+                        <Badge variant="outline">风险分 {slot.egress.fraudScore}</Badge>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </div>
               </div>
             ))}

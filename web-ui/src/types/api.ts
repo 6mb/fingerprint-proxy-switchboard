@@ -28,6 +28,13 @@ export interface EgressInfo {
   ok: boolean;
   ip: string;
   country?: CountryInfo;
+  city?: string;
+  region?: string;
+  asn?: number | null;
+  asOrganization?: string;
+  fraudScore?: number | null;
+  isResidential?: boolean | null;
+  isBroadcast?: boolean | null;
   updatedAt?: string | null;
   error?: string;
 }

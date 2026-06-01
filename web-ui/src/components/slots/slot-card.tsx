@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
-import { countriesFor, displayName, formatRelativeTime, normalizeCountry, shortCountryLabel, sortNodes, statusLabel, statusTone } from "@/lib/panel";
+import { countriesFor, displayName, egressPurityLabel, egressPurityTone, formatRelativeTime, normalizeCountry, shortCountryLabel, sortNodes, statusLabel, statusTone } from "@/lib/panel";
 import type { SlotInfo } from "@/types/api";
 
 export function SlotCard({
@@ -121,6 +121,27 @@ export function SlotCard({
                     ? `最近检测 ${formatRelativeTime(slot.egress.updatedAt)}`
                     : (slot.egress.error || "点击检测出口，确认当前槽位的真实出口地区")}
                 </div>
+                {slot.egress.ok ? (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <Badge variant={egressPurityTone(slot.egress)}>
+                      纯净度 {egressPurityLabel(slot.egress)}
+                    </Badge>
+                    {typeof slot.egress.fraudScore === "number" ? (
+                      <Badge variant="outline">风险分 {slot.egress.fraudScore}</Badge>
+                    ) : null}
+                    {slot.egress.isResidential === true ? (
+                      <Badge variant="outline">住宅</Badge>
+                    ) : null}
+                    {slot.egress.isBroadcast === true ? (
+                      <Badge variant="outline">广播</Badge>
+                    ) : null}
+                  </div>
+                ) : null}
+                {slot.egress.ok && slot.egress.asOrganization ? (
+                  <div className="mt-2 truncate text-xs text-muted-foreground" title={slot.egress.asOrganization}>
+                    ASN {slot.egress.asn || "-"} · {slot.egress.asOrganization}
+                  </div>
+                ) : null}
               </div>
               <Button
                 variant="outline"

@@ -1,4 +1,4 @@
-import type { CountryInfo, DelayResult, NodeInfo, SlotInfo } from "@/types/api";
+import type { CountryInfo, DelayResult, EgressInfo, NodeInfo, SlotInfo } from "@/types/api";
 
 const nodeNameMax = 34;
 
@@ -135,4 +135,22 @@ export function sortNodes(nodes: NodeInfo[], mode: "delay-asc" | "delay-desc" | 
     if (leftDelay !== null && rightDelay === null) return -1;
     return left.name.localeCompare(right.name, "zh-CN");
   });
+}
+
+export function egressPurityLabel(egress?: EgressInfo | null) {
+  if (!egress?.ok) return "待检测";
+  const fraudScore = typeof egress.fraudScore === "number" ? egress.fraudScore : null;
+  if (fraudScore === null) return "未知";
+  if (fraudScore <= 25) return "高纯净";
+  if (fraudScore <= 60) return "中等";
+  return "高风险";
+}
+
+export function egressPurityTone(egress?: EgressInfo | null) {
+  if (!egress?.ok) return "unknown" as const;
+  const fraudScore = typeof egress.fraudScore === "number" ? egress.fraudScore : null;
+  if (fraudScore === null) return "unknown" as const;
+  if (fraudScore <= 25) return "good" as const;
+  if (fraudScore <= 60) return "warn" as const;
+  return "bad" as const;
 }
