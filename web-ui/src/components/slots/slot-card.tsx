@@ -28,12 +28,18 @@ export function SlotCard({
     const choices = country === "ALL"
       ? slot.choiceDetails
       : slot.choiceDetails.filter(
-      (node) => normalizeCountry(node.country).code === country,
-    );
+          (node) => normalizeCountry(node.country).code === country,
+        );
     return sortNodes(choices, "delay-asc");
   }, [country, slot.choiceDetails]);
 
   const countries = useMemo(() => countriesFor(slot.choiceDetails), [slot.choiceDetails]);
+  const activeSelectedName = useMemo(() => {
+    if (filteredChoices.some((node) => node.name === selectedName)) {
+      return selectedName;
+    }
+    return filteredChoices[0]?.name || "";
+  }, [filteredChoices, selectedName]);
 
   return (
     <Card className="h-full">
@@ -85,7 +91,26 @@ export function SlotCard({
           <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             国家筛选
           </label>
-          <Select value={country} onChange={(event) => setCountry(event.target.value)}>
+          <Select
+            value={country}
+            onChange={(event) => {
+              const nextCountry = event.target.value;
+              setCountry(nextCountry);
+              const nextChoices = sortNodes(
+                (nextCountry === "ALL"
+                  ? slot.choiceDetails
+                  : slot.choiceDetails.filter(
+                      (node) => normalizeCountry(node.country).code === nextCountry,
+                    )),
+                "delay-asc",
+              );
+              setSelectedName((current) =>
+                nextChoices.some((node) => node.name === current)
+                  ? current
+                  : (nextChoices[0]?.name || ""),
+              );
+            }}
+          >
             <option value="ALL">所有国家</option>
             {countries.map(([code, name]) => (
               <option key={code} value={code}>
@@ -99,7 +124,7 @@ export function SlotCard({
           <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             节点选择
           </label>
-          <Select value={selectedName} onChange={(event) => setSelectedName(event.target.value)}>
+          <Select value={activeSelectedName} onChange={(event) => setSelectedName(event.target.value)}>
             {filteredChoices.length ? null : <option value="">当前筛选下没有节点</option>}
             {filteredChoices.map((node) => (
               <option key={node.name} value={node.name}>
@@ -112,13 +137,13 @@ export function SlotCard({
         <div className="flex flex-wrap gap-2">
           <Button
             className="flex-1"
-            disabled={selecting || !selectedName}
+            disabled={selecting || !activeSelectedName}
             onClick={async () => {
-              if (!selectedName) {
+              if (!activeSelectedName) {
                 toast.error("当前筛选下没有可切换节点");
                 return;
               }
-              await onSelect(slot.id, selectedName);
+              await onSelect(slot.id, activeSelectedName);
             }}
           >
             <ArrowRightLeft />
@@ -127,13 +152,13 @@ export function SlotCard({
           <Button
             variant="outline"
             className="flex-1"
-            disabled={testing || !selectedName}
+            disabled={testing || !activeSelectedName}
             onClick={async () => {
-              if (!selectedName) {
+              if (!activeSelectedName) {
                 toast.error("当前筛选下没有可测速节点");
                 return;
               }
-              await onTest(selectedName);
+              await onTest(activeSelectedName);
             }}
           >
             <TimerReset />
