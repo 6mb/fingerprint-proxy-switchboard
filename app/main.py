@@ -5,11 +5,12 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
+from urllib.parse import quote as urlquote
 from urllib.parse import urlsplit
 
 import httpx
 from fastapi import Cookie, FastAPI, HTTPException, Request, Response
-from fastapi.responses import FileResponse, PlainTextResponse
+from fastapi.responses import FileResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import yaml
@@ -71,6 +72,8 @@ class PanelSettingsRequest(BaseModel):
 
 
 DELAY_CACHE: dict[str, dict[str, Any]] = {}
+SLOT_EGRESS_CACHE: dict[int, dict[str, Any]] = {}
+EGRESS_PROBE_URL = "http://ip-api.com/json/?fields=status,country,countryCode,query"
 
 
 def settings() -> Settings:
@@ -255,6 +258,36 @@ def _write_panel_settings(cfg: Settings, slot_ports: list[int]) -> dict[str, Any
     return {"slotPorts": slot_ports, "slotCount": len(slot_ports)}
 
 
+def _proxy_url_for_slot(cfg: Settings, port: int) -> str:
+    auth = cfg.proxy_auth.strip()
+    if not auth or ":" not in auth:
+        return f"http://127.0.0.1:{port}"
+    username, password = auth.split(":", 1)
+    return "http://{username}:{password}@127.0.0.1:{port}".format(
+        username=urlquote(username, safe=""),
+        password=urlquote(password, safe=""),
+        port=port,
+    )
+
+
+def _egress_cache(slot_id: int) -> dict[str, Any]:
+    return SLOT_EGRESS_CACHE.get(slot_id) or {
+        "ok": False,
+        "ip": "",
+        "country": {"code": "", "name": ""},
+        "updatedAt": None,
+        "error": "",
+    }
+
+
+def _clear_slot_runtime_cache(slot_ids: Optional[list[int]] = None) -> None:
+    if slot_ids is None:
+        SLOT_EGRESS_CACHE.clear()
+        return
+    for slot_id in slot_ids:
+        SLOT_EGRESS_CACHE.pop(slot_id, None)
+
+
 def _latest_history_delay(proxy: dict[str, Any]) -> Optional[int]:
     history = proxy.get("history") or []
     if not isinstance(history, list):
@@ -303,8 +336,9 @@ def slot_payload(group_name: str, port: int, proxies: dict[str, Any], host: str,
     choices = group.get("all") or []
     selected = group.get("now") or (choices[0] if choices else "")
     choice_details = [node_map[name] for name in choices if name in node_map]
+    slot_id = int(group_name.rsplit("-", 1)[-1])
     return {
-        "id": int(group_name.rsplit("-", 1)[-1]),
+        "id": slot_id,
         "name": group_name,
         "port": port,
         "selected": selected,
@@ -313,6 +347,7 @@ def slot_payload(group_name: str, port: int, proxies: dict[str, Any], host: str,
         "choiceDetails": choice_details,
         "http": f"http://{host}:{port}",
         "socks5": f"socks5://{host}:{port}",
+        "egress": _egress_cache(slot_id),
     }
 
 
@@ -330,9 +365,66 @@ async def test_node_delay(client: MihomoClient, name: str, delay_url: str) -> di
     return state
 
 
+async def probe_slot_egress(cfg: Settings, slot_id: int, port: int) -> dict[str, Any]:
+    proxy_url = _proxy_url_for_slot(cfg, port)
+    try:
+        async with httpx.AsyncClient(timeout=20.0, follow_redirects=True, proxy=proxy_url) as client:
+            response = await client.get(EGRESS_PROBE_URL)
+        response.raise_for_status()
+        payload = response.json()
+        if payload.get("status") != "success":
+            raise ValueError(str(payload.get("message") or "egress probe failed"))
+        state = {
+            "ok": True,
+            "ip": str(payload.get("query") or ""),
+            "country": {
+                "code": str(payload.get("countryCode") or ""),
+                "name": str(payload.get("country") or ""),
+            },
+            "updatedAt": _utc_now(),
+            "error": "",
+        }
+    except (httpx.HTTPError, ValueError) as exc:
+        state = {
+            "ok": False,
+            "ip": "",
+            "country": {"code": "", "name": ""},
+            "updatedAt": _utc_now(),
+            "error": str(exc)[:180],
+        }
+    SLOT_EGRESS_CACHE[slot_id] = state
+    return state
+
+
 @app.get("/healthz")
 async def healthz() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/healthz/deep")
+async def deep_healthz() -> dict[str, Any]:
+    cfg = settings()
+    details: dict[str, Any] = {
+        "panel": {"ok": True},
+        "mihomo": {"ok": False},
+        "egress": {"ok": False},
+    }
+    try:
+        client = mihomo()
+        version = await client.version()
+        proxies = await client.proxies()
+        details["mihomo"] = {
+            "ok": True,
+            "version": version.get("version") or version.get("meta") or "",
+            "groups": len([name for name in proxies if name.startswith("FP-SLOT-")]),
+        }
+        if cfg.slot_ports:
+            details["egress"] = await probe_slot_egress(cfg, 1, cfg.slot_ports[0])
+    except httpx.HTTPError as exc:
+        details["mihomo"] = {"ok": False, "error": str(exc)[:180]}
+
+    ok = bool(details["panel"]["ok"] and details["mihomo"].get("ok") and details["egress"].get("ok"))
+    return {"status": "ok" if ok else "degraded", **details}
 
 
 @app.get("/api/session")
@@ -397,6 +489,7 @@ async def save_panel_settings(
     try:
         slot_ports = parse_slot_ports(payload.slotPorts)
         saved = _write_panel_settings(cfg, slot_ports)
+        _clear_slot_runtime_cache()
         updated_cfg = load_settings()
         generated = write_mihomo_config(updated_cfg)
         await mihomo().reload_config(updated_cfg.mihomo_config_path)
@@ -421,6 +514,7 @@ async def save_sources(
         saved = _write_sources(cfg, payload.sources)
         generated: Optional[dict[str, Any]] = None
         if payload.reload:
+            _clear_slot_runtime_cache()
             generated = write_mihomo_config(cfg)
             await mihomo().reload_config(cfg.mihomo_config_path)
     except ConfigError as exc:
@@ -494,7 +588,21 @@ async def select_slot(
     if payload.name not in choices:
         raise HTTPException(status_code=400, detail="node is not available in this slot")
     await client.select(group, payload.name)
+    _clear_slot_runtime_cache([slot_id])
     return {"ok": True, "slot": slot_id, "selected": payload.name}
+
+
+@app.post("/api/slots/{slot_id}/probe")
+async def probe_slot(
+    slot_id: int,
+    request: Request,
+    fp_panel_token: Optional[str] = Cookie(default=None),
+) -> dict[str, Any]:
+    require_auth(request, fp_panel_token)
+    cfg = settings()
+    if slot_id < 1 or slot_id > cfg.slot_count:
+        raise HTTPException(status_code=404, detail="slot not found")
+    return await probe_slot_egress(cfg, slot_id, cfg.slot_ports[slot_id - 1])
 
 
 @app.post("/api/delay")
@@ -551,6 +659,7 @@ async def reload_config(request: Request, fp_panel_token: Optional[str] = Cookie
     require_auth(request, fp_panel_token)
     cfg = settings()
     try:
+        _clear_slot_runtime_cache()
         generated = write_mihomo_config(cfg)
         await mihomo().reload_config(cfg.mihomo_config_path)
     except ConfigError as exc:
@@ -595,11 +704,17 @@ async def favicon() -> FileResponse:
     return FileResponse(icon_path)
 
 
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon_ico() -> RedirectResponse:
+    return RedirectResponse("/favicon.svg", status_code=307)
+
+
 @app.get("/{full_path:path}", include_in_schema=False)
 async def spa(full_path: str) -> FileResponse:
-    if full_path.startswith(("api/", "static/", "assets/")) or full_path in {
+    if full_path.startswith(("api/", "static/", "assets/", "healthz/")) or full_path in {
         "api",
         "assets",
+        "favicon.ico",
         "favicon.svg",
         "healthz",
         "static",

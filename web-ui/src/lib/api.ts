@@ -5,6 +5,7 @@ import type {
   DelayResult,
   LoginPayload,
   PanelSettingsResponse,
+  ProbeSlotResponse,
   ReloadResponse,
   SavePanelSettingsPayload,
   SavePanelSettingsResponse,
@@ -92,6 +93,11 @@ export const api = {
         body: JSON.stringify(payload),
       },
     ),
+  probeSlot: (slotId: number) =>
+    request<ProbeSlotResponse>(`/api/slots/${slotId}/probe`, {
+      method: "POST",
+      body: "{}",
+    }),
   delay: (payload: DelayPayload) =>
     request<DelayResult>("/api/delay", {
       method: "POST",

@@ -94,6 +94,11 @@ export default function DashboardPage() {
                       ? `${shortCountryLabel(slot.selectedNode.country)} · ${slot.selectedNode.type || "proxy"}`
                       : "尚未绑定节点"}
                   </div>
+                  <div className="text-xs text-muted-foreground">
+                    {slot.egress.ok
+                      ? `出口 ${shortCountryLabel(slot.egress.country)} · ${slot.egress.ip}`
+                      : "出口待检测"}
+                  </div>
                 </div>
               </div>
             ))}

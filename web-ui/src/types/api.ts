@@ -24,6 +24,14 @@ export interface NodeInfo {
   error?: string;
 }
 
+export interface EgressInfo {
+  ok: boolean;
+  ip: string;
+  country?: CountryInfo;
+  updatedAt?: string | null;
+  error?: string;
+}
+
 export interface SlotInfo {
   id: number;
   name: string;
@@ -34,6 +42,7 @@ export interface SlotInfo {
   choiceDetails: NodeInfo[];
   http: string;
   socks5: string;
+  egress: EgressInfo;
 }
 
 export interface SourceSummary {
@@ -159,3 +168,5 @@ export interface SaveSourcesPayload {
 export interface SavePanelSettingsPayload {
   slotPorts: number[];
 }
+
+export type ProbeSlotResponse = EgressInfo;

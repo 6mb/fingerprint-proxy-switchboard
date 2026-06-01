@@ -83,6 +83,17 @@ export function useSelectSlotMutation() {
   });
 }
 
+export function useProbeSlotMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ slotId }: { slotId: number }) => api.probeSlot(slotId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["status"] });
+    },
+  });
+}
+
 export function useSaveSourcesMutation() {
   const queryClient = useQueryClient();
 

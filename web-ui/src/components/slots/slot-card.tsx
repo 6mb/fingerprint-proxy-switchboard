@@ -1,25 +1,29 @@
-import { ArrowRightLeft, Gauge, Globe2, TimerReset } from "lucide-react";
+import { ArrowRightLeft, Gauge, Globe2, Radar, TimerReset } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
-import { countriesFor, displayName, normalizeCountry, shortCountryLabel, sortNodes, statusLabel, statusTone } from "@/lib/panel";
+import { countriesFor, displayName, formatRelativeTime, normalizeCountry, shortCountryLabel, sortNodes, statusLabel, statusTone } from "@/lib/panel";
 import type { SlotInfo } from "@/types/api";
 
 export function SlotCard({
   slot,
   onSelect,
   onTest,
-  selecting,
-  testing,
+  onProbe,
+  selectingSlotId,
+  testingName,
+  probingSlotId,
 }: {
   slot: SlotInfo;
   onSelect: (slotId: number, name: string) => Promise<void>;
   onTest: (name: string) => Promise<void>;
-  selecting: boolean;
-  testing: boolean;
+  onProbe: (slotId: number) => Promise<void>;
+  selectingSlotId?: number | null;
+  testingName?: string | null;
+  probingSlotId?: number | null;
 }) {
   const [country, setCountry] = useState("ALL");
   const [selectedName, setSelectedName] = useState(slot.selected || "");
@@ -40,6 +44,13 @@ export function SlotCard({
     }
     return filteredChoices[0]?.name || "";
   }, [filteredChoices, selectedName]);
+  const targetNode = useMemo(
+    () => filteredChoices.find((node) => node.name === activeSelectedName) || null,
+    [activeSelectedName, filteredChoices],
+  );
+  const selecting = selectingSlotId === slot.id;
+  const testing = testingName === activeSelectedName;
+  const probing = probingSlotId === slot.id;
 
   return (
     <Card className="h-full">
@@ -71,19 +82,58 @@ export function SlotCard({
       <CardContent className="space-y-4">
         <div className="rounded-lg border border-border bg-muted/30 p-3">
           <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            <Gauge className="size-3.5" />
-            当前节点状态
+            <ArrowRightLeft className="size-3.5" />
+            即将切换到
           </div>
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <div className="truncate font-medium">{slot.selectedNode?.name || "未选择节点"}</div>
+              <div className="truncate font-medium">{targetNode?.name || "未选择节点"}</div>
               <div className="text-xs text-muted-foreground">
-                {slot.selectedNode
-                  ? `${shortCountryLabel(slot.selectedNode.country)} · ${slot.selectedNode.type || "proxy"}`
-                  : "尚未绑定节点"}
+                {targetNode
+                  ? `${shortCountryLabel(targetNode.country)} · ${targetNode.type || "proxy"}`
+                  : "当前筛选下没有节点"}
               </div>
             </div>
-            <Badge variant={statusTone(slot.selectedNode)}>{statusLabel(slot.selectedNode)}</Badge>
+            <Badge variant={statusTone(targetNode)}>{statusLabel(targetNode)}</Badge>
+          </div>
+          {targetNode && targetNode.name !== slot.selected ? (
+            <div className="mt-2 text-xs text-amber-700">
+              目标节点与当前生效节点不同，点击后会切换到这个节点。
+            </div>
+          ) : null}
+        </div>
+
+        <div className="rounded-lg border border-border bg-muted/30 p-3">
+          <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <Gauge className="size-3.5" />
+            当前出口
+          </div>
+          <div className="space-y-1">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="truncate font-medium">
+                  {slot.egress.ok
+                    ? `${shortCountryLabel(slot.egress.country)} · ${slot.egress.ip}`
+                    : "尚未检测出口"}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {slot.egress.ok
+                    ? `最近检测 ${formatRelativeTime(slot.egress.updatedAt)}`
+                    : (slot.egress.error || "点击检测出口，确认当前槽位的真实出口地区")}
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={probing}
+                onClick={async () => {
+                  await onProbe(slot.id);
+                }}
+              >
+                <Radar className={probing ? "animate-pulse" : ""} />
+                检测出口
+              </Button>
+            </div>
           </div>
         </div>
 
