@@ -382,7 +382,14 @@ def _probe_slot_egress_sync(cfg: Settings, port: int) -> dict[str, Any]:
             "https": proxy_url,
         }),
     )
-    with opener.open(EGRESS_PROBE_URL, timeout=20) as response:
+    request = urllib.request.Request(
+        EGRESS_PROBE_URL,
+        headers={
+            "User-Agent": "curl/8.7.1",
+            "Accept": "application/json",
+        },
+    )
+    with opener.open(request, timeout=20) as response:
         return json.loads(response.read().decode())
 
 
