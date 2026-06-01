@@ -1,0 +1,45 @@
+services:
+  fp-config-init:
+    build: .
+    container_name: fp-config-init
+    env_file:
+      - .env
+    volumes:
+      - ./config:/app/config
+    command: ["python", "-m", "app.render_config_cli"]
+    restart: "no"
+
+  fp-mihomo:
+    image: docker.io/metacubex/mihomo:Alpha
+    container_name: fp-mihomo
+    restart: unless-stopped
+    network_mode: host
+    depends_on:
+      fp-config-init:
+        condition: service_completed_successfully
+    volumes:
+      - ./config:/root/.config/mihomo
+    command:
+      - -d
+      - /root/.config/mihomo
+      - -f
+      - /root/.config/mihomo/config.yaml
+
+  fp-panel:
+    build: .
+    container_name: fp-panel
+    restart: unless-stopped
+    network_mode: host
+    depends_on:
+      - fp-mihomo
+    env_file:
+      - .env
+    volumes:
+      - ./config:/app/config
+    command:
+      - uvicorn
+      - app.main:app
+      - --host
+      - ${PANEL_HOST:-0.0.0.0}
+      - --port
+      - ${PANEL_PORT:-6310}

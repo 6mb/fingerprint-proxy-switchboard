@@ -1,0 +1,7 @@
+sources:
+  - name: hytron
+    path: /app/config/source.yaml
+  - name: provider-from-url
+    url: https://example.invalid/subscription.yaml
+  - name: provider-from-url-file
+    url_file: /app/config/subscriptions/provider.url

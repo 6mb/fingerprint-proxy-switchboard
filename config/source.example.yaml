@@ -1,0 +1,7 @@
+proxies:
+  - name: Example-SS
+    type: ss
+    server: example.invalid
+    port: 443
+    cipher: aes-128-gcm
+    password: change-me
