@@ -11,6 +11,24 @@ Fingerprint Proxy Switchboard is a lightweight control plane for fixed proxy slo
 - Multiple source input methods: local file, remote URL, or URL file
 - React-based admin UI with a modern dashboard layout
 
+## Screenshots
+
+### Overview
+
+![Overview](./docs/screenshots/overview.png)
+
+### Slots
+
+![Slots](./docs/screenshots/slots.png)
+
+### Sources
+
+![Sources](./docs/screenshots/sources.png)
+
+### Settings
+
+![Settings](./docs/screenshots/settings.png)
+
 ## Use Cases
 
 - Fingerprint browsers that need stable per-profile proxy ports
@@ -216,3 +234,7 @@ VITE_API_PROXY_TARGET=http://<your-host>:6310
 1. Reconfirm that no live secrets remain under `.env` or `config/`
 2. Add screenshots and repository topics
 3. Refine `CONTRIBUTING.md` further if you want a stricter contribution workflow
+
+## Release Notes
+
+- You can reuse [docs/release-notes.md](./docs/release-notes.md) as the GitHub Release draft template

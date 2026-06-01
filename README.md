@@ -13,6 +13,10 @@ Lightweight Mihomo-powered switchboard for fingerprint browser proxy slots.
 - React dashboard UI inspired by modern shadcn-style admin panels
 - Multi-source subscription manifest support with local path, direct URL, or URL file input
 
+## Screenshot | 界面预览
+
+![Dashboard Overview](./docs/screenshots/overview.png)
+
 ## Quick Start | 快速开始
 
 ```bash
@@ -53,6 +57,7 @@ After the first deployment, you can also update the slot count and slot port lis
 - [README.en.md](./README.en.md)
 - [config/README.md](./config/README.md)
 - [web-ui/README.md](./web-ui/README.md)
+- [docs/release-notes.md](./docs/release-notes.md)
 
 ## Publishing Notes | 发布说明
 

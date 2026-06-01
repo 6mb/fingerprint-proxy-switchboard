@@ -11,6 +11,24 @@
 - 后台管理台：React 仪表盘风格界面，适合长期维护
 - 一键测速与重载：支持单节点测速、全量测速、生成并重载配置
 
+## 界面截图
+
+### 概述
+
+![概述页](./docs/screenshots/overview.png)
+
+### 端口槽位
+
+![端口槽位页](./docs/screenshots/slots.png)
+
+### 订阅源
+
+![订阅源页](./docs/screenshots/sources.png)
+
+### 系统配置
+
+![系统配置页](./docs/screenshots/settings.png)
+
 ## 适用场景
 
 - 指纹浏览器、多开浏览器、自动化浏览器需要固定代理端口
@@ -218,3 +236,7 @@ VITE_API_PROXY_TARGET=http://<your-host>:6310
 1. 再次确认 `.env` 和 `config/` 下的真实数据没有进入仓库
 2. 填写仓库描述、主题标签、截图
 3. 如果准备接受外部贡献，可以继续细化 `CONTRIBUTING.md`
+
+## 发布说明
+
+- 可直接参考 [docs/release-notes.md](./docs/release-notes.md) 作为 GitHub Release 文案模板
