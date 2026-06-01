@@ -7,7 +7,7 @@ Lightweight Mihomo-powered switchboard for fingerprint browser proxy slots.
 
 ## Overview | 项目概览
 
-- Custom slot count and custom slot ports through `SLOT_PORTS`
+- Custom slot count and custom slot ports through `SLOT_PORTS` or the web admin settings page
 - HTTP and SOCKS5 exposed on the same slot port through Mihomo `mixed` mode
 - FastAPI backend for slot switching, delay testing, source management, and config reload
 - React dashboard UI inspired by modern shadcn-style admin panels
@@ -34,6 +34,7 @@ SLOT_PORTS=6181,6182,7001,7002,7003
 ```
 
 The number of exposed proxy slots is determined by the number of ports in `SLOT_PORTS`.
+After the first deployment, you can also update the slot count and slot port list directly in the dashboard under `System Settings`, which writes runtime config to `config/panel.yaml`.
 
 ## Repository Layout | 仓库结构
 

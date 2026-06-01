@@ -8,6 +8,7 @@ import {
   Rss,
   Route,
   Server,
+  SlidersHorizontal,
   X,
 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -23,6 +24,7 @@ const navItems = [
   { label: "端口槽位", href: "/slots", icon: ArrowUpDown },
   { label: "节点池", href: "/nodes", icon: Server },
   { label: "订阅源", href: "/sources", icon: Rss },
+  { label: "系统配置", href: "/settings", icon: SlidersHorizontal },
 ];
 
 function BrandMark() {

@@ -6,6 +6,7 @@ import { useSessionQuery } from "@/hooks/use-session";
 import DashboardPage from "@/pages/dashboard";
 import LoginPage from "@/pages/login";
 import NodesPage from "@/pages/nodes";
+import SettingsPage from "@/pages/settings";
 import SlotsPage from "@/pages/slots";
 import SourcesPage from "@/pages/sources";
 
@@ -61,6 +62,7 @@ export default function App() {
         <Route path="/slots" element={<SlotsPage />} />
         <Route path="/nodes" element={<NodesPage />} />
         <Route path="/sources" element={<SourcesPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>

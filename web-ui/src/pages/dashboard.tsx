@@ -68,7 +68,7 @@ export default function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle>端口槽位状态</CardTitle>
-            <CardDescription>每个固定端口对应一个独立代理槽位。</CardDescription>
+            <CardDescription>每个自定义端口对应一个独立代理槽位。</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3 md:grid-cols-2">
             {data.slots.map((slot) => (

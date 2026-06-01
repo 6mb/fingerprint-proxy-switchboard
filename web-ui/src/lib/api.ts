@@ -4,7 +4,10 @@ import type {
   DelaysResponse,
   DelayResult,
   LoginPayload,
+  PanelSettingsResponse,
   ReloadResponse,
+  SavePanelSettingsPayload,
+  SavePanelSettingsResponse,
   SaveSourcesPayload,
   SaveSourcesResponse,
   SelectSlotPayload,
@@ -69,6 +72,12 @@ export const api = {
       body: "{}",
     }),
   status: () => request<StatusResponse>("/api/status"),
+  panelSettings: () => request<PanelSettingsResponse>("/api/panel-settings"),
+  savePanelSettings: (payload: SavePanelSettingsPayload) =>
+    request<SavePanelSettingsResponse>("/api/panel-settings", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
   sources: () => request<SourcesResponse>("/api/sources"),
   saveSources: (payload: SaveSourcesPayload) =>
     request<SaveSourcesResponse>("/api/sources", {

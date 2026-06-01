@@ -89,6 +89,13 @@ export interface SourcesResponse {
   sourcesPath: string;
 }
 
+export interface PanelSettingsResponse {
+  slotPorts: number[];
+  slotCount: number;
+  slotGroups: string[];
+  settingsPath: string;
+}
+
 export interface SaveSourcesResponse {
   ok: boolean;
   saved?: {
@@ -104,6 +111,19 @@ export interface ReloadResponse {
   ok: boolean;
   generated: {
     nodes: number;
+    source_errors?: string[];
+  };
+}
+
+export interface SavePanelSettingsResponse {
+  ok: boolean;
+  saved?: {
+    slotPorts: number[];
+    slotCount: number;
+  };
+  settings: PanelSettingsResponse;
+  generated?: {
+    nodes?: number;
     source_errors?: string[];
   };
 }
@@ -134,4 +154,8 @@ export interface SaveSourcesPayload {
     keep: boolean;
   }>;
   reload: boolean;
+}
+
+export interface SavePanelSettingsPayload {
+  slotPorts: number[];
 }

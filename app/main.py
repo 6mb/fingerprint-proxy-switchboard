@@ -16,7 +16,7 @@ import yaml
 
 from .config_builder import ConfigError, summarize_sources, write_mihomo_config
 from .mihomo_client import MihomoClient
-from .settings import Settings, load_settings
+from .settings import Settings, load_settings, parse_slot_ports
 
 
 APP_ROOT = Path(__file__).resolve().parent
@@ -64,6 +64,10 @@ class SourceEntryRequest(BaseModel):
 class SourcesRequest(BaseModel):
     sources: list[SourceEntryRequest]
     reload: bool = False
+
+
+class PanelSettingsRequest(BaseModel):
+    slotPorts: list[int]
 
 
 DELAY_CACHE: dict[str, dict[str, Any]] = {}
@@ -229,6 +233,28 @@ def _write_sources(cfg: Settings, entries: list[SourceEntryRequest]) -> dict[str
     return {"count": len(sources)}
 
 
+def _panel_settings_response(cfg: Settings) -> dict[str, Any]:
+    return {
+        "slotPorts": cfg.slot_ports,
+        "slotCount": cfg.slot_count,
+        "slotGroups": cfg.slot_groups,
+        "settingsPath": str(cfg.panel_settings_path),
+    }
+
+
+def _write_panel_settings(cfg: Settings, slot_ports: list[int]) -> dict[str, Any]:
+    cfg.panel_settings_path.parent.mkdir(parents=True, exist_ok=True)
+    cfg.panel_settings_path.parent.chmod(0o700)
+    tmp_path = cfg.panel_settings_path.with_suffix(cfg.panel_settings_path.suffix + ".tmp")
+    tmp_path.write_text(
+        yaml.safe_dump({"slot_ports": slot_ports}, allow_unicode=True, sort_keys=False),
+        encoding="utf-8",
+    )
+    tmp_path.chmod(0o600)
+    tmp_path.replace(cfg.panel_settings_path)
+    return {"slotPorts": slot_ports, "slotCount": len(slot_ports)}
+
+
 def _latest_history_delay(proxy: dict[str, Any]) -> Optional[int]:
     history = proxy.get("history") or []
     if not isinstance(history, list):
@@ -245,11 +271,13 @@ def _latest_history_delay(proxy: dict[str, Any]) -> Optional[int]:
 def _node_state(name: str, proxy: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
     cached = DELAY_CACHE.get(name) or {}
     history_delay = _latest_history_delay(proxy)
-    delay = cached.get("delay")
-    if delay is None:
+    cached_delay = cached.get("delay")
+    cached_status = cached.get("status")
+    delay = cached_delay
+    if delay is None and not cached_status:
         delay = history_delay
 
-    status = cached.get("status")
+    status = cached_status
     if not status:
         if isinstance(delay, int):
             status = "ok"
@@ -350,6 +378,35 @@ async def get_sources(request: Request, fp_panel_token: Optional[str] = Cookie(d
         "sources": [_source_response(item, index) for index, item in enumerate(sources)],
         "sourcesPath": str(cfg.sources_path),
     }
+
+
+@app.get("/api/panel-settings")
+async def get_panel_settings(request: Request, fp_panel_token: Optional[str] = Cookie(default=None)) -> dict[str, Any]:
+    require_auth(request, fp_panel_token)
+    return _panel_settings_response(settings())
+
+
+@app.post("/api/panel-settings")
+async def save_panel_settings(
+    payload: PanelSettingsRequest,
+    request: Request,
+    fp_panel_token: Optional[str] = Cookie(default=None),
+) -> dict[str, Any]:
+    require_auth(request, fp_panel_token)
+    cfg = settings()
+    try:
+        slot_ports = parse_slot_ports(payload.slotPorts)
+        saved = _write_panel_settings(cfg, slot_ports)
+        updated_cfg = load_settings()
+        generated = write_mihomo_config(updated_cfg)
+        await mihomo().reload_config(updated_cfg.mihomo_config_path)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except ConfigError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=502, detail=f"mihomo reload failed: {exc}") from exc
+    return {"ok": True, "saved": saved, "settings": _panel_settings_response(updated_cfg), "generated": generated}
 
 
 @app.post("/api/sources")

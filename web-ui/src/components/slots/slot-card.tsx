@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
-import { countriesFor, displayName, normalizeCountry, shortCountryLabel, statusLabel, statusTone } from "@/lib/panel";
+import { countriesFor, displayName, normalizeCountry, shortCountryLabel, sortNodes, statusLabel, statusTone } from "@/lib/panel";
 import type { SlotInfo } from "@/types/api";
 
 export function SlotCard({
@@ -25,10 +25,12 @@ export function SlotCard({
   const [selectedName, setSelectedName] = useState(slot.selected || "");
 
   const filteredChoices = useMemo(() => {
-    if (country === "ALL") return slot.choiceDetails;
-    return slot.choiceDetails.filter(
+    const choices = country === "ALL"
+      ? slot.choiceDetails
+      : slot.choiceDetails.filter(
       (node) => normalizeCountry(node.country).code === country,
     );
+    return sortNodes(choices, "delay-asc");
   }, [country, slot.choiceDetails]);
 
   const countries = useMemo(() => countriesFor(slot.choiceDetails), [slot.choiceDetails]);

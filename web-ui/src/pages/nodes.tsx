@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { QueryState } from "@/components/ui/query-state";
 import { Select } from "@/components/ui/select";
 import { useSingleDelayMutation, useStatusQuery } from "@/hooks/use-panel-data";
-import { countriesFor, normalizeCountry } from "@/lib/panel";
+import { countriesFor, normalizeCountry, sortNodes } from "@/lib/panel";
 
 const pageSize = 30;
 
@@ -14,6 +14,7 @@ export default function NodesPage() {
   const statusQuery = useStatusQuery();
   const delayMutation = useSingleDelayMutation();
   const [country, setCountry] = useState("ALL");
+  const [sortMode, setSortMode] = useState<"delay-asc" | "delay-desc" | "name-asc">("delay-asc");
   const [page, setPage] = useState(1);
 
   const rawData = statusQuery.data;
@@ -24,10 +25,11 @@ export default function NodesPage() {
     if (country === "ALL") return nodes;
     return nodes.filter((node) => normalizeCountry(node.country).code === country);
   }, [country, rawData?.nodes]);
+  const sortedNodes = useMemo(() => sortNodes(filteredNodes, sortMode), [filteredNodes, sortMode]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredNodes.length / pageSize));
+  const totalPages = Math.max(1, Math.ceil(sortedNodes.length / pageSize));
   const currentPage = Math.min(page, totalPages);
-  const pagedNodes = filteredNodes.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const pagedNodes = sortedNodes.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   if (statusQuery.isLoading) {
     return <QueryState title="正在加载节点池" description="正在整理节点状态与国家分布。" loading />;
@@ -49,7 +51,7 @@ export default function NodesPage() {
         description="统一查看节点健康度、来源与国家分布，并支持逐个测速。"
       />
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto]">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
         <div className="rounded-lg border border-border bg-card p-4">
           <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
             国家筛选
@@ -67,6 +69,23 @@ export default function NodesPage() {
                 {name} ({code})
               </option>
             ))}
+          </Select>
+        </div>
+
+        <div className="rounded-lg border border-border bg-card p-4">
+          <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            排序方式
+          </div>
+          <Select
+            value={sortMode}
+            onChange={(event) => {
+              setSortMode(event.target.value as "delay-asc" | "delay-desc" | "name-asc");
+              setPage(1);
+            }}
+          >
+            <option value="delay-asc">按延迟从低到高</option>
+            <option value="delay-desc">按延迟从高到低</option>
+            <option value="name-asc">按名称</option>
           </Select>
         </div>
 

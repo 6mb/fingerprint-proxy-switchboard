@@ -17,12 +17,21 @@ export function useSourcesQuery(enabled = true) {
   });
 }
 
+export function usePanelSettingsQuery(enabled = true) {
+  return useQuery({
+    queryKey: ["panel-settings"],
+    queryFn: api.panelSettings,
+    enabled,
+  });
+}
+
 export function usePanelRefresh() {
   const queryClient = useQueryClient();
 
   return async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["status"] }),
+      queryClient.invalidateQueries({ queryKey: ["panel-settings"] }),
       queryClient.invalidateQueries({ queryKey: ["sources"] }),
     ]);
   };
@@ -81,6 +90,18 @@ export function useSaveSourcesMutation() {
     mutationFn: api.saveSources,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["sources"] });
+      await queryClient.invalidateQueries({ queryKey: ["status"] });
+    },
+  });
+}
+
+export function useSavePanelSettingsMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: api.savePanelSettings,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["panel-settings"] });
       await queryClient.invalidateQueries({ queryKey: ["status"] });
     },
   });

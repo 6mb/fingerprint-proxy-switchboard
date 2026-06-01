@@ -4,7 +4,7 @@ Fingerprint Proxy Switchboard is a lightweight control plane for fixed proxy slo
 
 ## Features
 
-- Custom slot count and custom slot ports through `SLOT_PORTS`
+- Custom slot count and custom slot ports through `SLOT_PORTS` or the admin UI
 - HTTP and SOCKS5 on the same port via Mihomo `mixed` listeners
 - Dedicated Mihomo instance, isolated from an existing system-level deployment
 - Web dashboard for slot switching, source management, delay testing, and config reload
@@ -130,6 +130,7 @@ SLOT_PORTS=6181,6182,7001,7002,7003
 ```
 
 The example above exposes 5 slots. The number of active proxy slots is always equal to the number of ports listed in `SLOT_PORTS`.
+After deployment, you can also adjust slot count and port list from the `System Settings` page, which persists runtime values into `config/panel.yaml`.
 
 ## Environment Variables
 

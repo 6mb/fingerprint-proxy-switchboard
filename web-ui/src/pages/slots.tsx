@@ -24,7 +24,7 @@ export default function SlotsPage() {
     <div className="page-shell space-y-6">
       <PageHeader
         title="端口槽位"
-        description="每个固定端口都有独立的节点选择与测速操作。"
+        description="每个自定义端口都有独立的节点选择与测速操作。"
         actions={
           <a
             href="/api/export"
@@ -43,7 +43,7 @@ export default function SlotsPage() {
       <div className="grid gap-4 xl:grid-cols-2">
         {data.slots.map((slot) => (
           <SlotCard
-            key={slot.id}
+            key={`${slot.id}-${slot.selected}-${slot.port}`}
             slot={slot}
             selecting={selectMutation.isPending}
             testing={delayMutation.isPending}

@@ -51,17 +51,17 @@ export function statusLabel(node?: Pick<NodeInfo, "delay" | "status"> | null) {
 
 export function statusTone(node?: Pick<NodeInfo, "delay" | "status"> | null) {
   if (!node) return "unknown" as const;
-  if (node.status === "ok") {
-    if (typeof node.delay === "number" && Number.isInteger(node.delay) && node.delay <= 120) {
-      return "good" as const;
-    }
-    if (typeof node.delay === "number" && Number.isInteger(node.delay) && node.delay <= 260) {
-      return "ok" as const;
-    }
+  if (typeof node.delay === "number" && Number.isInteger(node.delay)) {
+    if (node.delay <= 120) return "good" as const;
+    if (node.delay <= 260) return "ok" as const;
     return "warn" as const;
   }
   if (node.status === "error" || node.status === "down") return "bad" as const;
   return "unknown" as const;
+}
+
+export function delayValue(node?: Pick<NodeInfo, "delay"> | null) {
+  return typeof node?.delay === "number" && Number.isInteger(node.delay) ? node.delay : null;
 }
 
 export function formatRelativeTime(value?: string | null) {
@@ -114,4 +114,25 @@ export function protocolSummary(nodes: NodeInfo[]) {
   }
 
   return [...summary.entries()].sort((a, b) => b[1] - a[1]);
+}
+
+export function sortNodes(nodes: NodeInfo[], mode: "delay-asc" | "delay-desc" | "name-asc" = "delay-asc") {
+  return [...nodes].sort((left, right) => {
+    if (mode === "name-asc") {
+      return left.name.localeCompare(right.name, "zh-CN");
+    }
+
+    const leftDelay = delayValue(left);
+    const rightDelay = delayValue(right);
+    const leftRank = leftDelay ?? (mode === "delay-asc" ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY);
+    const rightRank = rightDelay ?? (mode === "delay-asc" ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY);
+
+    if (leftRank !== rightRank) {
+      return mode === "delay-asc" ? leftRank - rightRank : rightRank - leftRank;
+    }
+
+    if (leftDelay === null && rightDelay !== null) return 1;
+    if (leftDelay !== null && rightDelay === null) return -1;
+    return left.name.localeCompare(right.name, "zh-CN");
+  });
 }
