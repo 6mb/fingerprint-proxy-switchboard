@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 from urllib.parse import quote as urlquote
 from urllib.parse import urlsplit
+import urllib.request
 
 import httpx
 from fastapi import Cookie, FastAPI, HTTPException, Request, Response
@@ -372,16 +374,24 @@ async def test_node_delay(client: MihomoClient, name: str, delay_url: str) -> di
     return state
 
 
-async def probe_slot_egress(cfg: Settings, slot_id: int, port: int) -> dict[str, Any]:
+def _probe_slot_egress_sync(cfg: Settings, port: int) -> dict[str, Any]:
     proxy_url = _proxy_url_for_slot(cfg, port)
+    opener = urllib.request.build_opener(
+        urllib.request.ProxyHandler({
+            "http": proxy_url,
+            "https": proxy_url,
+        }),
+    )
+    with opener.open(EGRESS_PROBE_URL, timeout=20) as response:
+        return json.loads(response.read().decode())
+
+
+async def probe_slot_egress(cfg: Settings, slot_id: int, port: int) -> dict[str, Any]:
     try:
-        async with httpx.AsyncClient(timeout=20.0, follow_redirects=True, proxy=proxy_url) as client:
-            response = await client.get(EGRESS_PROBE_URL)
-        response.raise_for_status()
-        payload = response.json()
+        payload = await asyncio.to_thread(_probe_slot_egress_sync, cfg, port)
         state = {
             "ok": True,
-            "ip": str(payload.get("query") or ""),
+            "ip": str(payload.get("ip") or ""),
             "country": {
                 "code": str(payload.get("countryCode") or ""),
                 "name": str(payload.get("country") or ""),
@@ -396,7 +406,7 @@ async def probe_slot_egress(cfg: Settings, slot_id: int, port: int) -> dict[str,
             "updatedAt": _utc_now(),
             "error": "",
         }
-    except (httpx.HTTPError, ValueError) as exc:
+    except Exception as exc:  # noqa: BLE001 - compact probe error for UI/healthz.
         state = {
             "ok": False,
             "ip": "",
