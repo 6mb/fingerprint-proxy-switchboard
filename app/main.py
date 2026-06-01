@@ -21,9 +21,11 @@ from .settings import Settings, load_settings
 
 APP_ROOT = Path(__file__).resolve().parent
 STATIC_ROOT = APP_ROOT / "static"
+ASSETS_ROOT = STATIC_ROOT / "assets"
 
 app = FastAPI(title="Fingerprint Proxy Switchboard")
 app.mount("/static", StaticFiles(directory=STATIC_ROOT, check_dir=False), name="static")
+app.mount("/assets", StaticFiles(directory=ASSETS_ROOT, check_dir=False), name="assets")
 
 
 @app.middleware("http")
@@ -528,8 +530,22 @@ async def index() -> FileResponse:
     return frontend_index()
 
 
+@app.get("/favicon.svg", include_in_schema=False)
+async def favicon() -> FileResponse:
+    icon_path = STATIC_ROOT / "favicon.svg"
+    if not icon_path.exists():
+        raise HTTPException(status_code=404, detail="not found")
+    return FileResponse(icon_path)
+
+
 @app.get("/{full_path:path}", include_in_schema=False)
 async def spa(full_path: str) -> FileResponse:
-    if full_path.startswith(("api/", "static/")) or full_path in {"api", "static", "healthz"}:
+    if full_path.startswith(("api/", "static/", "assets/")) or full_path in {
+        "api",
+        "assets",
+        "favicon.svg",
+        "healthz",
+        "static",
+    }:
         raise HTTPException(status_code=404, detail="not found")
     return frontend_index()
