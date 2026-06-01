@@ -340,6 +340,15 @@ def _unique_name(name: str, source: str, seen: set[str]) -> str:
         index += 1
 
 
+def _normalize_proxy(item: dict[str, Any]) -> dict[str, Any]:
+    proxy_type = str(item.get("type") or "").lower()
+    reality_opts = item.get("reality-opts")
+    if proxy_type in {"vless", "vmess", "trojan"} and isinstance(reality_opts, dict):
+        if not str(item.get("client-fingerprint") or "").strip():
+            item["client-fingerprint"] = "chrome"
+    return item
+
+
 def extract_proxies(data: dict[str, Any], source: str = "source", seen: Optional[set[str]] = None) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     proxies = data.get("proxies")
     if not isinstance(proxies, list):
@@ -354,7 +363,7 @@ def extract_proxies(data: dict[str, Any], source: str = "source", seen: Optional
         name = str(proxy.get("name", "")).strip()
         if not name:
             continue
-        item = copy.deepcopy(proxy)
+        item = _normalize_proxy(copy.deepcopy(proxy))
         unique_name = _unique_name(name, source, names)
         item["name"] = unique_name
         result.append(item)
